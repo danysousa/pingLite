@@ -1,0 +1,4 @@
+ping
+./srcs/*.o
+./libft/*.o
+./libft.a
