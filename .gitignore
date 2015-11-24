@@ -1,5 +1,4 @@
 ping
-./srcs/*.o
-./libft/*/.o
-./libft/libft.a
-libft.a
+*.o
+*.a
+.DS_Store
