@@ -6,67 +6,11 @@
 /*   By: danysousa <danysousa@student.42.fr>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2015/11/23 10:33:21 by danysousa         #+#    #+#             */
-/*   Updated: 2015/12/01 12:31:14 by danysousa        ###   ########.fr       */
+/*   Updated: 2015/12/01 15:01:48 by danysousa        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include <ping.h>
-#include <fcntl.h>
-#include <errno.h>
-#include <sys/socket.h>
-#include <resolv.h>
-#include <netdb.h>
-#include <netinet/in.h>
-#include <netinet/ip_icmp.h>
-#include <strings.h>
-
-
-
-/*--------------------------------------------------------------------*/
-/*--- checksum - standard 1s complement checksum                   ---*/
-/*--------------------------------------------------------------------*/
-unsigned short checksum(void *b, int len)
-{
-	unsigned short *buf = b;
-	unsigned int sum=0;
-	unsigned short result;
-
-	for ( sum = 0; len > 1; len -= 2 )
-		sum += *buf++;
-	if ( len == 1 )
-		sum += *(unsigned char*)buf;
-	sum = (sum >> 16) + (sum & 0xFFFF);
-	sum += (sum >> 16);
-	result = ~sum;
-	return result;
-}
-
-
-void			display(void *buff/*, t_info *info*/)
-{
-	struct iphdr	*ip = buff;
-	char src[INET_ADDRSTRLEN];
-	char dest[INET_ADDRSTRLEN];
-
-	inet_ntop( AF_INET, (void *)&ip->saddr, src, sizeof(src) );
-	inet_ntop( AF_INET, (void *)&ip->daddr, dest, sizeof(dest) );
-
-	printf("IPv%d: hdr-size=%d pkt-size=%d protocol=%d TTL=%d src=%s dest=%s\n",
-		ip->version,
-		ip->ihl*4,
-		ntohs(ip->tot_len),
-		ip->protocol,
-		ip->ttl,
-		src,
-		dest);
-
-	printf("*****************************\n%d bytes from %s: icmp_seq=%d ttl=%d time=%d ms\n",
-	 ntohs(ip->tot_len) - (ip->ihl * 4),
-	 src,
-	 0,
-	 ip->ttl,
-	 42);
-}
 
 int		init_sock()
 {
@@ -76,26 +20,30 @@ int		init_sock()
 	sd = socket(PF_INET, SOCK_RAW, IPPROTO_ICMP);
 	if ( sd < 0 )
 	{
-		perror("socket");
+		ft_putendl_fd("Error with init socket", 2);
 		return (-1);
 	}
 	if ( setsockopt(sd, SOL_IP, IP_TTL, &val, sizeof(val)) != 0)
 	{
-		perror("Set TTL option");
-		return (-1);
+		ft_putendl_fd("Error with setsockopt", 2);
+		return (-2);
 	}
 
 	return (sd);
 }
 
-struct sockaddr_in		*get_sock_info(char *adress)
+struct sockaddr_in		*get_sock_info()
 {
 	struct addrinfo			*addrinfo;
 	struct sockaddr_in		*addr_ping;
 
 	addr_ping = malloc(sizeof(struct sockaddr_in));
 	ft_bzero(addr_ping, sizeof(addr_ping));
-	getaddrinfo(adress, NULL, NULL, &addrinfo);
+	if (getaddrinfo(stats.host, NULL, NULL, &addrinfo) != 0)
+	{
+		ft_putendl_fd("Can't resolve this host", 2);
+		return (NULL);
+	}
 	addr_ping->sin_family = addrinfo->ai_family;
 	addr_ping->sin_port = 0;
 	addr_ping->sin_addr.s_addr = ((struct sockaddr_in *)addrinfo->ai_addr)->sin_addr.s_addr;
@@ -109,6 +57,10 @@ int					loop(t_contact *contact, int cnt)
 	size_t				i;
 
 	len = sizeof(*contact->recv);
+
+	/*
+	** INIT PACKET
+	*/
 	ft_bzero(&contact->pckt, sizeof(contact->pckt));
 	contact->pckt.hdr.type = ICMP_ECHO;
 	contact->pckt.hdr.un.echo.id = contact->pid;
@@ -117,46 +69,60 @@ int					loop(t_contact *contact, int cnt)
 	contact->pckt.msg[i] = 0;
 	contact->pckt.hdr.un.echo.sequence = cnt;
 	contact->pckt.hdr.checksum = checksum(&contact->pckt, sizeof(contact->pckt));
+
+	/*
+	** SEND & RECEIVE
+	*/
 	if ( sendto(contact->sd, &contact->pckt, sizeof(contact->pckt), 0, (struct sockaddr*)contact->send, sizeof(*contact->send)) <= 0 )
 	{
 		ft_putendl_fd("Error with send packet", 2);
-		return (-1);
+		return (-3);
 	}
-
+	get_timeval(&contact->send_t);
 	if ( recvfrom(contact->sd, &contact->pckt, sizeof(contact->pckt), 0, (struct sockaddr*)contact->recv, &len) < 0 )
 	{
 		ft_putendl_fd("Error with recv packet", 2);
-		return (-2);
+		return (-4);
 	}
+	get_timeval(&contact->recv_t);
 	return (0);
 }
 
-int						ping(char *adress, int pid)
+int						ping(int pid)
 {
 	t_contact				contact;
 	int						cnt;
+	int						err;
+	double					duration;
 
 	cnt = 1;
-	contact.send = get_sock_info(adress);
+	contact.send = get_sock_info();
+	if (contact.send == NULL)
+		return (-5);
 	contact.recv = malloc(sizeof(struct sockaddr_in));
 	contact.sd = init_sock();
 	contact.pid = pid;
 
+	if (contact.sd < 0)
+		return (contact.sd);
+
 	while (0x2A)
 	{
-		loop(&contact, cnt);
+		err = loop(&contact, cnt);
+		if (err != 0)
+			return (err);
+		duration = (double)(contact.recv_t.tv_sec * 1000) + (double)((double)contact.recv_t.tv_usec / 1000);
+		duration -= (double)(contact.send_t.tv_sec * 1000) + (double)((double)contact.send_t.tv_usec / 1000);
+		update_stats(duration);
+		display(&contact.pckt, cnt, duration);
 		cnt++;
-		display(&contact.pckt);
 		sleep(1);
 	}
 
 	return 1;
 }
 
-/*--------------------------------------------------------------------*/
-/*--- main - look up host and start ping processes.                ---*/
-/*--------------------------------------------------------------------*/
-int main(int argc, char *argv[])
+int			main(int argc, char *argv[])
 {
 	int		pid;
 
@@ -166,12 +132,15 @@ int main(int argc, char *argv[])
 		ft_putendl_fd("Usage: ./ping [hostname/ip]", 2);
 		return (-1);
 	}
-	// if (pid != 0)
-	// {
-	// 	ft_putendl_fd("Sorry, ft_ping required root rights", 2);
-	// 	return (-2);
-	// }
 
-	return ping(argv[1], pid);
+	stats.min = -1;
+	stats.avg = -1;
+	stats.max = -1;
+	stats.stddev = 0;
+	stats.transmitted = 0;
+	stats.received = 0;
+	stats.host = argv[1];
+	signal(SIGINT, print_stat);
+	return ping(pid);
 }
 

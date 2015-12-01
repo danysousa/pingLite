@@ -6,7 +6,7 @@
 #    By: danysousa <danysousa@student.42.fr>        +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2014/02/26 13:13:47 by rbenjami          #+#    #+#              #
-#    Updated: 2015/11/23 10:32:48 by danysousa        ###   ########.fr        #
+#    Updated: 2015/12/01 15:15:19 by danysousa        ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -16,7 +16,7 @@ export	CC		=	cc
 
 export	INC		=	-I $(PWD)/libft
 
-NAME			=	ping
+NAME			=	ft_ping
 
 CFLAGS			=	-Wall -Wextra -Werror -g
 
@@ -30,7 +30,8 @@ INC_SRC			=	$(addprefix $(INC_DIR), $(INC_FILES))
 
 SRC_DIR			=	srcs/
 
-FILES			=	ping.c
+FILES			=	ping.c\
+					utils.c
 
 SRC				=	$(addprefix $(SRC_DIR), $(FILES))
 
