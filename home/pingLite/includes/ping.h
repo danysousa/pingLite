@@ -6,7 +6,7 @@
 /*   By: danysousa <danysousa@student.42.fr>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2015/11/23 10:35:44 by danysousa         #+#    #+#             */
-/*   Updated: 2015/11/23 16:45:16 by danysousa        ###   ########.fr       */
+/*   Updated: 2015/12/01 12:22:16 by danysousa        ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,23 +18,25 @@
 # include <sys/socket.h>
 # include <netdb.h>
 # include <sys/socket.h>
+# include <netinet/in.h>
+# include <netinet/ip_icmp.h>
+# include <arpa/inet.h>
 
-typedef struct icmp
+#define PACKETSIZE 64
+struct packet
 {
-	//! ICMP message type.
-	uint8_t		type;
-	//! ICMP operation code.
-	uint8_t		code;
-	//! ICMP checksum.
-	uint16_t	chk;
-}				t_icmp;
+	struct icmphdr hdr;
+	char msg[PACKETSIZE-sizeof(struct icmphdr)];
+};
 
-typedef struct s_ping
+typedef struct		s_contact
 {
-	t_icmp		head;
-	uint16_t	id;
-	char		seq[16];
-}				t_ping;
+	int					pid;
+	int					sd;
+	struct packet		pckt;
+	struct sockaddr_in	*send;
+	struct sockaddr_in	*recv;
+}					t_contact;
 
 
 #endif
