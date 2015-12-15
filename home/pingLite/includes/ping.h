@@ -45,6 +45,12 @@ typedef struct			s_contact
 	struct timeval		recv_t;
 }						t_contact;
 
+typedef struct			s_time_list
+{
+	double				time;
+	struct s_time_list	*next;
+}						t_time_list;
+
 typedef struct			s_trip
 {
 	double				min;
@@ -54,6 +60,8 @@ typedef struct			s_trip
 	int					transmitted;
 	int					received;
 	char				*host;
+	t_time_list			*f_time;
+	t_time_list			*c_time;
 }						t_trip;
 
 t_trip					stats;

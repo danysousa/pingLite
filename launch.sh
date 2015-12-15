@@ -2,11 +2,12 @@
 
 #docker run -it -v $PWD/home:/home/ debian-custom
 
-grp="2013_paris"
+grp="dsousa"
 
-if [ "$grp" = "$GROUP" ];
+if [ "$grp" = "$LOGNAME" ];
 then
-	path=${PWD/$HOME/'/Users/dsousa'}
+	vol="/Volumes/pok"
+	path=${PWD/$vol/'/Users'}
 	docker run -it -v $path/home:/home/ debian-custom
 else
 	docker run -it -v $PWD/home:/home/ debian-custom

@@ -36,10 +36,15 @@ struct sockaddr_in		*get_sock_info()
 {
 	struct addrinfo			*addrinfo;
 	struct sockaddr_in		*addr_ping;
+	char					*hostname;
 
+	if (ft_strcmp(stats.host, "localhost") == 0)
+		hostname = ft_strdup("127.0.0.1");
+	else
+		hostname = stats.host;
 	addr_ping = malloc(sizeof(struct sockaddr_in));
 	ft_bzero(addr_ping, sizeof(addr_ping));
-	if (getaddrinfo(stats.host, NULL, NULL, &addrinfo) != 0)
+	if (getaddrinfo(hostname, NULL, NULL, &addrinfo) != 0)
 	{
 		ft_putendl_fd("Can't resolve this host", 2);
 		return (NULL);
@@ -122,24 +127,47 @@ int						ping(int pid)
 	return 1;
 }
 
+void		ft_option(char *argv[])
+{
+	if (!ft_strcmp(argv[1], "-v"))
+		return ;
+	else
+	{
+		ft_putendl("Send ICMP ECHO_REQUEST packets to network hosts.\n\n\
+Options valid for all request types:\n\
+-h\t\tthat's it !\n\
+-v\t\tverbose\n\
+Mandatory or optional arguments to long options are also mandatory or optional for any corresponding short options.\n\
+Options marked with (root only) are available only to superuser.\n\n\
+Report bugs to ... no report bugs !:)");
+		exit(0);
+	}
+}
+
 int			main(int argc, char *argv[])
 {
 	int		pid;
 
 	pid = getpid();
-	if (argc < 2)
+
+	if (argc == 3 || (argc == 2 && argv[1][0] == '-'))
+		ft_option(argv);
+
+	if (argc < 2 || (argc > 2 && argv[1][0] != '-') || (argc == 2 && argv[1][0] == '-'))
 	{
-		ft_putendl_fd("Usage: ./ping [hostname/ip]", 2);
+		ft_putendl_fd("Usage: ./ping [-v or -h][hostname/ip]", 2);
 		return (-1);
 	}
 
 	stats.min = -1;
-	stats.avg = -1;
+	stats.avg = 0;
 	stats.max = -1;
 	stats.stddev = 0;
 	stats.transmitted = 0;
 	stats.received = 0;
-	stats.host = argv[1];
+	stats.host = (argc == 3) ? argv[2] : argv[1];
+	stats.f_time = NULL;
+	stats.c_time = NULL;
 	signal(SIGINT, print_stat);
 	return ping(pid);
 }
